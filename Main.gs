@@ -58,8 +58,8 @@ var tableStyles = {
 }
 
 function main() {
-  cleanRogueLineBreaks()
   handleInlineCode()
+  cleanRogueLineBreaks()
   turnFencesIntoTables()
   highlightTables()
 }
@@ -133,7 +133,7 @@ function applyStyling(emittedNode, editableText, style) {
       kind = "default";
     }
     // Subtract 1 because endRange is exclusive, but formatting rules are inclusive.
-    style[childNode.kind](editableText, childNode.startRange, childNode.endRange - 1)
+    style[kind](editableText, childNode.startRange, childNode.endRange - 1)
     applyStyling(childNode, editableText, style);
   }
 }
@@ -148,7 +148,32 @@ function handleInlineCode() {
   while (true) {
     var inlineRangeElement = body.findText("`[^`]+`", lastRange)
     if (inlineRangeElement == null) {break;}
+
+    // Ugly hack: To make this preserve links, we need to iterate over every character,
+    // determine if it's part of a link and where, and then add the links after setting
+    // the formatting:
+    // https://stackoverflow.com/a/18731628/6876989
+    // Unfortunately, there is no way to keep the foreground character, but I'll pretend
+    // that's a feature.
+    //
+    // An array of [link, startIndex, endIndex]
+    var links = []
+    var startLink = 0
+    var lastLink = null
+    for (var c = inlineRangeElement.getStartOffset(); c <= inlineRangeElement.getEndOffsetInclusive(); c++ /*ayyy :)*/) {
+      var curLink = inlineRangeElement.getElement().getLinkUrl(c);
+      if (lastLink != curLink) {
+        if (lastLink != null) {
+          links.push([lastLink, startLink, c - 1]);
+        }
+        lastLink = curLink;
+        startLink = c;
+      }
+    }
     inlineRangeElement.getElement().setAttributes(inlineRangeElement.getStartOffset(), inlineRangeElement.getEndOffsetInclusive(), inlineStyle)
+    for (var link of links) {
+      inlineRangeElement.getElement().setLinkUrl(link[1], link[2], link[0])
+    }
     inlineRangeElement.getElement().deleteText(inlineRangeElement.getEndOffsetInclusive(), inlineRangeElement.getEndOffsetInclusive())
     inlineRangeElement.getElement().deleteText(inlineRangeElement.getStartOffset(), inlineRangeElement.getStartOffset())
     lastRange = inlineRangeElement;
@@ -157,7 +182,7 @@ function handleInlineCode() {
 
 function turnFencesIntoTables() {
   var body = DocumentApp.getActiveDocument().getBody();
-
+  body.getChild(0).asText().getLinkUrl()
   var childNum = 0;
   var fenceStart = null;
   var fenceStartIndex = 0
