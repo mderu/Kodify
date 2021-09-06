@@ -1,0 +1,12 @@
+{
+  "timeZone": "America/Los_Angeles",
+  "exceptionLogging": "NONE",
+  "runtimeVersion": "V8",
+  "webapp": {
+    "executeAs": "USER_DEPLOYING",
+    "access": "ANYONE_ANONYMOUS"
+  },
+  "oauthScopes": [
+    "https://www.googleapis.com/auth/documents.currentonly"
+  ]
+}
